@@ -39,16 +39,16 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
+          cache-all-crates: true
 
       - name: Install Node
         uses: actions/setup-node@v4
         with:
           node-version: "20"
 
-      - uses: pnpm/action-setup@v3
+      - uses: pnpm/action-setup@v4
         name: Install pnpm
         with:
-          version: 9
           run_install: false
 
       - name: Pnpm install and check
@@ -63,6 +63,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
           tagName: v__VERSION__
           releaseName: "Clash Verge Rev v__VERSION__"
@@ -110,16 +116,6 @@ jobs:
           echo "VERSION=$(cat package.json | jq '.version' | tr -d '"')" >> $GITHUB_ENV
 
       - name: Upload Release
-        if: startsWith(matrix.target, 'x86_64')
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{env.VERSION}}
-          name: "Clash Verge Rev v${{env.VERSION}}"
-          body: "More new features are now supported."
-          token: ${{ secrets.GITHUB_TOKEN }}
-          files: src-tauri/target/${{ matrix.target }}/release/bundle/appimage/*.AppImage*
-
-      - name: Upload Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{env.VERSION}}
@@ -162,10 +158,9 @@ jobs:
         with:
           node-version: "20"
 
-      - uses: pnpm/action-setup@v3
+      - uses: pnpm/action-setup@v4
         name: Install pnpm
         with:
-          version: 9
           run_install: false
 
       - name: Pnpm install and check
@@ -224,10 +219,9 @@ jobs:
         with:
           node-version: "20"
 
-      - uses: pnpm/action-setup@v2
+      - uses: pnpm/action-setup@v4
         name: Install pnpm
         with:
-          version: 9
           run_install: false
 
       - name: Pnpm install
@@ -250,10 +244,9 @@ jobs:
         with:
           node-version: "20"
 
-      - uses: pnpm/action-setup@v2
+      - uses: pnpm/action-setup@v4
         name: Install pnpm
         with:
-          version: 9
           run_install: false
 
       - name: Pnpm install
@@ -263,3 +256,14 @@ jobs:
         run: pnpm updater-fixed-webview2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  submit-to-winget:
+    runs-on: windows-latest
+    needs: [release-update]
+    steps:
+      - name: Submit to Winget
+        uses: vedantmgoyal9/winget-releaser@main
+        with:
+          identifer: ClashVergeRev.ClashVergeRev
+          installers-regex: '_(arm64|x64|x86)-setup\.exe$'
+          token: ${{ secrets.GITHUB_TOKEN }}

@@ -9,6 +9,10 @@ permissions: write-all
 env:
   CARGO_INCREMENTAL: 0
   RUST_BACKTRACE: short
+concurrency:
+  # only allow per workflow per commit (and not pr) to run at a time
+  group: "${{ github.workflow }} - ${{ github.head_ref || github.ref }}"
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   alpha:
@@ -42,16 +46,17 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
+          cache-all-crates: true
+          cache-on-failure: true
 
       - name: Install Node
         uses: actions/setup-node@v4
         with:
           node-version: "20"
 
-      - uses: pnpm/action-setup@v3
+      - uses: pnpm/action-setup@v4
         name: Install pnpm
         with:
-          version: 9
           run_install: false
 
       - name: Pnpm install and check
@@ -66,6 +71,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
           tagName: alpha
           releaseName: "Clash Verge Rev Alpha"
@@ -116,17 +127,6 @@ jobs:
           echo "BUILDTIME=$(TZ=Asia/Shanghai date)" >> $GITHUB_ENV
 
       - name: Upload Release
-        if: startsWith(matrix.target, 'x86_64')
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: alpha
-          name: "Clash Verge Rev Alpha"
-          body: "More new features are now supported."
-          prerelease: true
-          token: ${{ secrets.GITHUB_TOKEN }}
-          files: src-tauri/target/${{ matrix.target }}/release/bundle/appimage/*.AppImage*
-
-      - name: Upload Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: alpha
@@ -164,16 +164,17 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
+          cache-all-crates: true
+          cache-on-failure: true
 
       - name: Install Node
         uses: actions/setup-node@v4
         with:
           node-version: "20"
 
-      - uses: pnpm/action-setup@v3
+      - uses: pnpm/action-setup@v4
         name: Install pnpm
         with:
-          version: 9
           run_install: false
 
       - name: Pnpm install and check
@@ -250,7 +251,7 @@ jobs:
           - MacOS apple M芯片: aarch64.dmg
 
           ### Linux
-          - Linux 64位: amd64.AppImage/amd64.deb/amd64.rpm
+          - Linux 64位: amd64.deb/amd64.rpm
           - Linux 32位: i386.deb/i386.rpm
           - Linux arm64架构: arm64.deb/aarch64.rpm
           - Linux armv7架构: armhf.deb/armhfp.rpm

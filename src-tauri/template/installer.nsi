@@ -323,9 +323,14 @@ Var AppStartMenuFolder
 !define MUI_FINISHPAGE_SHOWREADME_TEXT "$(createDesktop)"
 !define MUI_FINISHPAGE_SHOWREADME_FUNCTION CreateDesktopShortcut
 ; Show run app after installation.
-!define MUI_FINISHPAGE_RUN "$INSTDIR\${MAINBINARYNAME}.exe"
+!define MUI_FINISHPAGE_RUN
+!define MUI_FINISHPAGE_RUN_FUNCTION RunMainBinary
 !define MUI_PAGE_CUSTOMFUNCTION_PRE SkipIfPassive
 !insertmacro MUI_PAGE_FINISH
+
+Function RunMainBinary
+  nsis_tauri_utils::RunAsUser "$INSTDIR\${MAINBINARYNAME}.exe" ""
+FunctionEnd
 
 ; Uninstaller Pages
 ; 1. Confirm uninstall page
@@ -433,6 +438,38 @@ FunctionEnd
       nsis_tauri_utils::KillProcessCurrentUser "clash-verge-service.exe"
     !else
       nsis_tauri_utils::KillProcess "clash-verge-service.exe"
+    !endif
+  ${EndIf}
+
+  ; Check if verge-mihomo-alpha.exe is running
+  !if "${INSTALLMODE}" == "currentUser"
+    nsis_tauri_utils::FindProcessCurrentUser "verge-mihomo-alpha.exe"
+  !else
+    nsis_tauri_utils::FindProcess "verge-mihomo-alpha.exe"
+  !endif
+  Pop $R0
+  ${If} $R0 = 0
+    DetailPrint "Kill verge-mihomo-alpha.exe..."
+    !if "${INSTALLMODE}" == "currentUser"
+      nsis_tauri_utils::KillProcessCurrentUser "verge-mihomo-alpha.exe"
+    !else
+      nsis_tauri_utils::KillProcess "verge-mihomo-alpha.exe"
+    !endif
+  ${EndIf}
+
+  ; Check if verge-mihomo.exe is running
+  !if "${INSTALLMODE}" == "currentUser"
+    nsis_tauri_utils::FindProcessCurrentUser "verge-mihomo.exe"
+  !else
+    nsis_tauri_utils::FindProcess "verge-mihomo.exe"
+  !endif
+  Pop $R0
+  ${If} $R0 = 0
+    DetailPrint "Kill verge-mihomo.exe..."
+    !if "${INSTALLMODE}" == "currentUser"
+      nsis_tauri_utils::KillProcessCurrentUser "verge-mihomo.exe"
+    !else
+      nsis_tauri_utils::KillProcess "verge-mihomo.exe"
     !endif
   ${EndIf}
 
@@ -729,7 +766,7 @@ Function .onInstSuccess
     ${GetOptions} $CMDLINE "/R" $R0
     IfErrors run_done 0
       ${GetOptions} $CMDLINE "/ARGS" $R0
-      Exec '"$INSTDIR\${MAINBINARYNAME}.exe" $R0'
+      nsis_tauri_utils::RunAsUser "$INSTDIR\${MAINBINARYNAME}.exe" "$R0"
   run_done:
 FunctionEnd
 

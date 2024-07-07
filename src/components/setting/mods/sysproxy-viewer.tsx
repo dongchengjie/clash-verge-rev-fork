@@ -2,7 +2,6 @@ import { forwardRef, useImperativeHandle, useState } from "react";
 import { useLockFn } from "ahooks";
 import { useTranslation } from "react-i18next";
 import {
-  Box,
   InputAdornment,
   List,
   ListItem,
@@ -17,12 +16,23 @@ import { getSystemProxy, getAutotemProxy } from "@/services/cmds";
 import { BaseDialog, DialogRef, Notice, Switch } from "@/components/base";
 import { Edit } from "@mui/icons-material";
 import { EditorViewer } from "@/components/profile/editor-viewer";
+import { BaseFieldset } from "@/components/base/base-fieldset";
+import getSystem from "@/utils/get-system";
+import { TooltipIcon } from "@/components/base/base-tooltip-icon";
 const DEFAULT_PAC = `function FindProxyForURL(url, host) {
   return "PROXY 127.0.0.1:%mixed-port%; SOCKS5 127.0.0.1:%mixed-port%; DIRECT;";
 }`;
 
 export const SysproxyViewer = forwardRef<DialogRef>((props, ref) => {
   const { t } = useTranslation();
+  let validReg;
+  if (getSystem() === "windows") {
+    validReg =
+      /^((\*\.)?([a-zA-Z0-9-]+\.?)+(local|test|example|invalid|localhost|onion|([a-zA-Z]{2,}))|(\d{1,3}\.){1,3}\d{1,3}|\d{1,3}\.\d{1,3}\.\d{1,3}\.\*|\d{1,3}\.\d{1,3}\.\*|\d{1,3}\.\*|([a-fA-F0-9:]+:+)+[a-fA-F0-9]+|localhost|<local>)(;((\*\.)?([a-zA-Z0-9-]+\.?)+(local|test|example|invalid|localhost|onion|([a-zA-Z]{2,}))|(\d{1,3}\.){1,3}\d{1,3}|\d{1,3}\.\d{1,3}\.\d{1,3}\.\*|\d{1,3}\.\d{1,3}\.\*|\d{1,3}\.\*|([a-fA-F0-9:]+:+)+[a-fA-F0-9]+|localhost|<local>))*;?$/;
+  } else {
+    validReg =
+      /^((\*\.)?([a-zA-Z0-9-]+\.?)+(local|test|example|invalid|localhost|onion|([a-zA-Z]{2,}))|(\d{1,3}\.){1,3}\d{1,3}(\/\d{1,2}|\/3[0-2])?|\d{1,3}\.\d{1,3}\.\d{1,3}\.\*(\/\d{1,2}|\/3[0-2])?|\d{1,3}\.\d{1,3}\.\*(\/\d{1,2}|\/3[0-2])?|\d{1,3}\.\*(\/\d{1,2}|\/3[0-2])?|([a-fA-F0-9:]+:+)+[a-fA-F0-9]+(\/\d{1,3})?|localhost|<local>)(,((\*\.)?([a-zA-Z0-9-]+\.?)+(local|test|example|invalid|localhost|onion|([a-zA-Z]{2,}))|(\d{1,3}\.){1,3}\d{1,3}(\/\d{1,2}|\/3[0-2])?|\d{1,3}\.\d{1,3}\.\d{1,3}\.\*(\/\d{1,2}|\/3[0-2])?|\d{1,3}\.\d{1,3}\.\*(\/\d{1,2}|\/3[0-2])?|\d{1,3}\.\*(\/3[0-2])?|([a-fA-F0-9:]+:+)+[a-fA-F0-9]+(\/\d{1,3})?|localhost|<local>))*,?$/;
+  }
 
   const [open, setOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -39,6 +49,7 @@ export const SysproxyViewer = forwardRef<DialogRef>((props, ref) => {
     proxy_auto_config,
     pac_file_content,
     enable_proxy_guard,
+    use_default_bypass,
     system_proxy_bypass,
     proxy_guard_duration,
   } = verge ?? {};
@@ -47,6 +58,7 @@ export const SysproxyViewer = forwardRef<DialogRef>((props, ref) => {
     guard: enable_proxy_guard,
     bypass: system_proxy_bypass,
     duration: proxy_guard_duration ?? 10,
+    use_default: use_default_bypass ?? true,
     pac: proxy_auto_config,
     pac_content: pac_file_content ?? DEFAULT_PAC,
   });
@@ -58,6 +70,7 @@ export const SysproxyViewer = forwardRef<DialogRef>((props, ref) => {
         guard: enable_proxy_guard,
         bypass: system_proxy_bypass,
         duration: proxy_guard_duration ?? 10,
+        use_default: use_default_bypass ?? true,
         pac: proxy_auto_config,
         pac_content: pac_file_content ?? DEFAULT_PAC,
       });
@@ -87,10 +100,16 @@ export const SysproxyViewer = forwardRef<DialogRef>((props, ref) => {
     if (value.pac !== proxy_auto_config) {
       patch.proxy_auto_config = value.pac;
     }
+    if (value.use_default !== use_default_bypass) {
+      patch.use_default_bypass = value.use_default;
+    }
     if (value.pac_content !== pac_file_content) {
       patch.pac_file_content = value.pac_content;
     }
-
+    if (value.bypass && !validReg.test(value.bypass)) {
+      Notice.error(t("Invalid Bypass Format"));
+      return;
+    }
     try {
       await patchVerge(patch);
       setOpen(false);
@@ -103,7 +122,7 @@ export const SysproxyViewer = forwardRef<DialogRef>((props, ref) => {
     <BaseDialog
       open={open}
       title={t("System Proxy Setting")}
-      contentSx={{ width: 450, maxHeight: 300 }}
+      contentSx={{ width: 450, maxHeight: 565 }}
       okBtn={t("Save")}
       cancelBtn={t("Cancel")}
       onClose={() => setOpen(false)}
@@ -111,6 +130,36 @@ export const SysproxyViewer = forwardRef<DialogRef>((props, ref) => {
       onOk={onSave}
     >
       <List>
+        <BaseFieldset label={t("Current System Proxy")} padding="15px 10px">
+          <FlexBox>
+            <Typography className="label">{t("Enable status")}</Typography>
+            <Typography className="value">
+              {value.pac
+                ? autoproxy?.enable
+                  ? t("Enabled")
+                  : t("Disabled")
+                : sysproxy?.enable
+                ? t("Enabled")
+                : t("Disabled")}
+            </Typography>
+          </FlexBox>
+          {!value.pac && (
+            <>
+              <FlexBox>
+                <Typography className="label">{t("Server Addr")}</Typography>
+                <Typography className="value">
+                  {sysproxy?.server ? sysproxy.server : t("Not available")}
+                </Typography>
+              </FlexBox>
+            </>
+          )}
+          {value.pac && (
+            <FlexBox>
+              <Typography className="label">{t("PAC URL")}</Typography>
+              <Typography className="value">{autoproxy?.url || "-"}</Typography>
+            </FlexBox>
+          )}
+        </BaseFieldset>
         <ListItem sx={{ padding: "5px 2px" }}>
           <ListItemText primary={t("Use PAC Mode")} />
           <Switch
@@ -120,19 +169,26 @@ export const SysproxyViewer = forwardRef<DialogRef>((props, ref) => {
             onChange={(_, e) => setValue((v) => ({ ...v, pac: e }))}
           />
         </ListItem>
+
         <ListItem sx={{ padding: "5px 2px" }}>
-          <ListItemText primary={t("Proxy Guard")} />
+          <ListItemText
+            primary={t("Proxy Guard")}
+            sx={{ maxWidth: "fit-content" }}
+          />
+          <TooltipIcon title={t("Proxy Guard Info")} />
           <Switch
             edge="end"
             disabled={!enabled}
             checked={value.guard}
             onChange={(_, e) => setValue((v) => ({ ...v, guard: e }))}
+            sx={{ marginLeft: "auto" }}
           />
         </ListItem>
 
         <ListItem sx={{ padding: "5px 2px" }}>
           <ListItemText primary={t("Guard Duration")} />
           <TextField
+            autoComplete="new-password"
             disabled={!enabled}
             size="small"
             value={value.duration}
@@ -149,28 +205,44 @@ export const SysproxyViewer = forwardRef<DialogRef>((props, ref) => {
           />
         </ListItem>
         {!value.pac && (
+          <ListItem sx={{ padding: "5px 2px" }}>
+            <ListItemText primary={t("Always use Default Bypass")} />
+            <Switch
+              edge="end"
+              disabled={!enabled}
+              checked={value.use_default}
+              onChange={(_, e) => setValue((v) => ({ ...v, use_default: e }))}
+            />
+          </ListItem>
+        )}
+        {!value.pac && (
           <>
-            <ListItem sx={{ padding: "5px 2px", alignItems: "start" }}>
-              <ListItemText
-                primary={t("Proxy Bypass")}
-                sx={{ padding: "3px 0" }}
-              />
-            </ListItem>
-            <ListItem sx={{ padding: "5px 2px" }}>
+            <ListItemText primary={t("Proxy Bypass")} />
+            <TextField
+              autoComplete="new-password"
+              error={value.bypass ? !validReg.test(value.bypass) : false}
+              disabled={!enabled}
+              size="small"
+              multiline
+              rows={4}
+              sx={{ width: "100%" }}
+              value={value.bypass}
+              onChange={(e) => {
+                setValue((v) => ({ ...v, bypass: e.target.value }));
+              }}
+            />
+            <ListItemText primary={t("Bypass")} />
+            <FlexBox>
               <TextField
-                disabled={!enabled}
+                autoComplete="new-password"
+                disabled={true}
                 size="small"
-                autoComplete="off"
                 multiline
                 rows={4}
                 sx={{ width: "100%" }}
-                value={value.bypass}
-                placeholder={sysproxy?.bypass || `-`}
-                onChange={(e) =>
-                  setValue((v) => ({ ...v, bypass: e.target.value }))
-                }
+                value={sysproxy?.bypass || "-"}
               />
-            </ListItem>
+            </FlexBox>
           </>
         )}
         {value.pac && (
@@ -189,73 +261,26 @@ export const SysproxyViewer = forwardRef<DialogRef>((props, ref) => {
               >
                 {t("Edit")} PAC
               </Button>
-              <EditorViewer
-                title={`${t("Edit")} PAC`}
-                mode="text"
-                property={value.pac_content ?? ""}
-                open={editorOpen}
-                language="javascript"
-                onChange={(content) => {
-                  let pac = DEFAULT_PAC;
-                  if (content && content.trim().length > 0) {
-                    pac = content;
-                  }
-                  setValue((v) => ({ ...v, pac_content: pac }));
-                }}
-                onClose={() => {
-                  setEditorOpen(false);
-                }}
-              />
+              {editorOpen && (
+                <EditorViewer
+                  open={true}
+                  title={`${t("Edit")} PAC`}
+                  initialData={Promise.resolve(value.pac_content ?? "")}
+                  language="javascript"
+                  onSave={(_prev, curr) => {
+                    let pac = DEFAULT_PAC;
+                    if (curr && curr.trim().length > 0) {
+                      pac = curr;
+                    }
+                    setValue((v) => ({ ...v, pac_content: pac }));
+                  }}
+                  onClose={() => setEditorOpen(false)}
+                />
+              )}
             </ListItem>
           </>
         )}
       </List>
-
-      <Box sx={{ mt: 2.5 }}>
-        <Typography variant="body1" sx={{ fontSize: "18px", mb: 1 }}>
-          {t("Current System Proxy")}
-        </Typography>
-
-        <FlexBox>
-          <Typography className="label">{t("Enable status")}</Typography>
-          <Typography className="value">
-            {value.pac
-              ? (!!autoproxy?.enable).toString()
-              : (!!sysproxy?.enable).toString()}
-          </Typography>
-        </FlexBox>
-        {!value.pac && (
-          <>
-            <FlexBox>
-              <Typography className="label">{t("Server Addr")}</Typography>
-              <Typography className="value">
-                {sysproxy?.server || "-"}
-              </Typography>
-            </FlexBox>
-
-            <FlexBox>
-              <Typography className="label">{t("Bypass")}</Typography>
-            </FlexBox>
-            <FlexBox>
-              <TextField
-                disabled={true}
-                size="small"
-                autoComplete="off"
-                multiline
-                rows={4}
-                sx={{ width: "100%" }}
-                value={sysproxy?.bypass || "-"}
-              />
-            </FlexBox>
-          </>
-        )}
-        {value.pac && (
-          <FlexBox>
-            <Typography className="label">{t("PAC URL")}</Typography>
-            <Typography className="value">{autoproxy?.url || "-"}</Typography>
-          </FlexBox>
-        )}
-      </Box>
     </BaseDialog>
   );
 });
@@ -266,6 +291,6 @@ const FlexBox = styled("div")`
 
   .label {
     flex: none;
-    width: 85px;
+    //width: 85px;
   }
 `;

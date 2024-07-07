@@ -181,15 +181,6 @@ pub async fn restart_sidecar() -> CmdResult {
     wrap_err!(CoreManager::global().run_core().await)
 }
 
-#[tauri::command]
-pub fn grant_permission(_core: String) -> CmdResult {
-    #[cfg(any(target_os = "macos", target_os = "linux"))]
-    return wrap_err!(manager::grant_permission(_core));
-
-    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
-    return Err("Unsupported target".into());
-}
-
 /// get the system proxy
 #[tauri::command]
 pub fn get_sys_proxy() -> CmdResult<Mapping> {
@@ -327,8 +318,19 @@ pub fn copy_icon_file(path: String, name: String) -> CmdResult<String> {
             Err(err) => Err(err.to_string()),
         }
     } else {
-        return Err("file not found".to_string());
+        Err("file not found".to_string())
     }
+}
+
+#[tauri::command]
+pub fn get_network_interfaces() -> Vec<String> {
+    use sysinfo::Networks;
+    let mut result = Vec::new();
+    let networks = Networks::new_with_refreshed_list();
+    for (interface_name, _) in &networks {
+        result.push(interface_name.clone());
+    }
+    return result;
 }
 
 #[tauri::command]
