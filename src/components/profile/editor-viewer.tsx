@@ -219,7 +219,7 @@ export const EditorViewer = <T extends Language>(props: Props<T>) => {
               appWindow.toggleMaximize().then(() => {
                 setTimeout(() => {
                   editorRef.current?.layout();
-                }, 100);
+                }, 3000);
               })
             }
           >
