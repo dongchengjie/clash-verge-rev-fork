@@ -220,7 +220,8 @@ export const EditorViewer = <T extends Language>(props: Props<T>) => {
                 editorRef.current?.layout();
                 setTimeout(() => {
                   editorRef.current?.layout();
-                }, 200);
+                }, 500);
+                s;
               })
             }
           >
