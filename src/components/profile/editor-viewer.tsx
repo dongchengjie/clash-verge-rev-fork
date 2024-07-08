@@ -215,12 +215,12 @@ export const EditorViewer = <T extends Language>(props: Props<T>) => {
             size="medium"
             color="inherit"
             title={t(isMaximized ? "Minimize" : "Maximize")}
-            onClick={async () =>
-              await appWindow.toggleMaximize().then(() => {
+            onClick={() =>
+              appWindow.toggleMaximize().then(() => {
                 editorRef.current?.layout();
-                // setTimeout(() => {
-                //   editorRef.current?.layout();
-                // }, 200);
+                setTimeout(() => {
+                  editorRef.current?.layout();
+                }, 200);
               })
             }
           >
