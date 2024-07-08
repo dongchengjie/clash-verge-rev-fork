@@ -7,7 +7,7 @@
     },
     "bundle": {
       "identifier": "io.github.clash-verge-rev.clash-verge-rev",
-      "targets": ["app", "dmg", "updater"],
+      "targets": ["app", "dmg"],
       "macOS": {
         "frameworks": [],
         "minimumSystemVersion": "10.15",
